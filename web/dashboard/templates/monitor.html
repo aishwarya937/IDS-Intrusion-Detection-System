@@ -1,0 +1,129 @@
+<!-- templates/monitor.html -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Monitor - Network Graph</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  <style>
+    body { margin:0; font-family: Arial, sans-serif; }
+    header { padding:12px 20px; background:#0b3d91; color:white; display:flex; align-items:center; justify-content:space-between; }
+    #graph { width:100%; height:calc(100vh - 70px); }
+    .controls { display:flex; gap:10px; align-items:center; }
+    button { padding:8px 12px; border-radius:6px; border:none; cursor:pointer; }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <strong>Monitor</strong> — Network Communication Simulation
+    </div>
+    <div class="controls">
+      <button id="startBtn">Start</button>
+      <button id="stopBtn">Stop</button>
+      <a href="/download_report" style="color:white; text-decoration:none;"><button>Download Report</button></a>
+    </div>
+  </header>
+
+  <div id="graph"></div>
+
+  <script>
+    const nodes = JSON.parse('{{ nodes | safe }}'); // positions array [{id,x,y},...]
+    const edges = JSON.parse('{{ edges | safe }}'); // edges list
+
+    // Build layouted scatter traces for nodes and edges
+    function buildGraphData(nodeStates) {
+      // nodeStates: map node_id -> {x,y,predicted_label,is_threat,confidence}
+      const edge_x = [];
+      const edge_y = [];
+      edges.forEach(e => {
+        const a = nodeStates[e.from];
+        const b = nodeStates[e.to];
+        if (a && b) {
+          edge_x.push(a.x); edge_x.push(b.x); edge_x.push(null);
+          edge_y.push(a.y); edge_y.push(b.y); edge_y.push(null);
+        }
+      });
+
+      const node_x = [];
+      const node_y = [];
+      const node_text = [];
+      const node_color = [];
+      const marker_size = [];
+
+      nodes.forEach(n => {
+        const st = nodeStates[n.id] || {x: n.x, y: n.y, predicted_label: 'unknown', is_threat: false, confidence: 0};
+        node_x.push(st.x);
+        node_y.push(st.y);
+        const lab = st.predicted_label + " (" + (st.confidence*100).toFixed(1) + "%)";
+        node_text.push("Node " + n.id + "<br>" + lab);
+        node_color.push(st.is_threat ? 'rgb(220,30,30)' : 'rgb(34,180,60)');
+        marker_size.push(st.is_threat ? 18 : 12);
+      });
+
+      return [
+        // edges trace
+        { x: edge_x, y: edge_y, mode: 'lines', line: { width: 1 }, hoverinfo: 'none', showlegend:false },
+        // nodes trace
+        { x: node_x, y: node_y, mode: 'markers+text', text: nodes.map(n => 'N'+n.id), textposition:'top center',
+          marker: { color: node_color, size: marker_size, line: { width: 1 } }, hoverinfo: 'text', hovertext: node_text, showlegend:false }
+      ];
+    }
+
+    // initial empty states
+    let nodeStates = {};
+    nodes.forEach(n => { nodeStates[n.id] = {x:n.x, y:n.y, predicted_label:'--', is_threat:false, confidence:0}; });
+
+    const layout = {
+      xaxis: {visible:false}, yaxis:{visible:false},
+      margin:{l:10,r:10,t:10,b:10},
+      hovermode: 'closest'
+    };
+
+    const graphDiv = document.getElementById('graph');
+    Plotly.newPlot(graphDiv, buildGraphData(nodeStates), layout, {responsive:true});
+
+    // polling loop
+    let intervalId = null;
+    async function fetchUpdate() {
+      try {
+        const resp = await fetch('/api/get_update');
+        const data = await resp.json();
+        const updates = data.updates;
+        updates.forEach(u => {
+          nodeStates[u.node_id] = {
+            x: u.x,
+            y: u.y,
+            predicted_label: u.predicted_label,
+            is_threat: u.is_threat,
+            confidence: u.confidence
+          };
+        });
+        // update plot
+        Plotly.react(graphDiv, buildGraphData(nodeStates), layout);
+      } catch (err) {
+        console.error("Update fetch error:", err);
+      }
+    }
+
+    document.getElementById('startBtn').addEventListener('click', function(){
+      if (!intervalId) {
+        fetchUpdate(); // immediate
+        intervalId = setInterval(fetchUpdate, 2000); // every 2 seconds
+      }
+    });
+
+    document.getElementById('stopBtn').addEventListener('click', function(){
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+    });
+
+    // start automatically on page load if you prefer:
+    // document.getElementById('startBtn').click();
+
+  </script>
+</body>
+</html>
