@@ -40,5 +40,85 @@ The system includes:
 ---
 
 ## 📂 **Project Structure**
+IDS_project/
+│── api/
+│ └── app.py # Flask API
+│
+│── models/
+│ ├── stacking_model.pkl # Trained Stacking Model
+│ └── scaler.pkl # Preprocessing scaler
+│
+│── data/
+│ ├── KDDTrain+.csv
+│ └── KDDTest+.csv
+│
+│── src/
+│ ├── preprocessing.py
+│ ├── train_model.py
+│ └── evaluate.py
+│
+│── notebooks/
+│ └── NSL_KDD_Analysis.ipynb
+│
+│── dashboard/
+│ ├── templates/
+│ └── static/
+│
+├── requirements.txt
+└── README.md
+🚀 How to Run the Project
+1️⃣ Install dependencies
+pip install -r requirements.txt
+
+2️⃣ Run the Flask API
+cd api
+python app.py
+
+
+API will start at:
+
+http://127.0.0.1:5000/predict
+
+3️⃣ Send a Test Request
+
+Example JSON:
+
+{
+  "duration": 0,
+  "protocol_type": "tcp",
+  "src_bytes": 181,
+  "dst_bytes": 5450,
+  "flag": "SF"
+}
+
+🎯 Model Performance
+Metric	Score
+Accuracy	96%
+Precision	High
+Recall	High
+F1-Score	Excellent
+🛠️ Tech Stack
+
+Python
+
+Pandas, NumPy, Scikit-Learn
+
+Flask
+
+Matplotlib, Seaborn
+
+HTML, CSS, JavaScript
+
+Jupyter Notebook
+
+🤝 Contributions
+
+Pull requests and suggestions are welcome.
+
+📧 Contact
+
+Aishwarya Satyappanmath
+GitHub: https://github.com/aishwarya937
+Email: aishwaryasattyappanamath@gmail.com
 
 
